@@ -1,0 +1,6 @@
+{
+  "name": "Avogadro's Gas Syringe & Stoichiometry Lab",
+  "description": "Interactive PhET-style gas syringe simulation exploring Avogadro's law, balancing equations, and limiting reagents through gas volume proportions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
