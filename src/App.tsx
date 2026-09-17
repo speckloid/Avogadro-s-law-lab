@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   ReactionDefinition, 
@@ -31,13 +31,14 @@ export default function App() {
   const [vol1, setVol1] = useState<number>(0);
   const [vol2, setVol2] = useState<number>(0);
   const [volP1, setVolP1] = useState<number>(0);
+  const [volP2, setVolP2] = useState<number>(0);
   const [currentSyringeVolume, setCurrentSyringeVolume] = useState<number>(0);
 
   // Particles inside the gas syringe
   const [particles, setParticles] = useState<ActiveParticle[]>([]);
 
   // Prediction & Challenge
-  const [predictionValue, setPredictionValue] = useState<number>(40);
+  const [predictionValue, setPredictionValue] = useState<number>(60);
   const [outcome, setOutcome] = useState<ReactionOutcome>(() =>
     calculateReactionOutcome(STARTER_REACTION, STARTER_REACTION.defaultVolume1, STARTER_REACTION.defaultVolume2)
   );
@@ -72,6 +73,50 @@ export default function App() {
       if (popTimerRef.current) clearTimeout(popTimerRef.current);
     };
   }, []);
+
+  // Compute challenge metadata (Target Title, Prompt, Expected Value, Slider Accent Color)
+  const targetInfo = (() => {
+    const targetType = currentReaction.questionTarget || 'total';
+    switch (targetType) {
+      case 'leftover_r1':
+        return {
+          type: 'leftover_r1' as const,
+          title: `Excess ${currentReaction.reactant1.formula}`,
+          prompt: currentReaction.targetCustomPrompt || `Predict unreacted excess ${currentReaction.reactant1.formula} leftover`,
+          value: outcome.r1Final,
+          color: currentReaction.reactant1.accentColor || currentReaction.reactant1.color,
+          defaultGuess: currentReaction.defaultVolume1,
+        };
+      case 'leftover_r2':
+        return {
+          type: 'leftover_r2' as const,
+          title: `Excess ${currentReaction.reactant2.formula}`,
+          prompt: currentReaction.targetCustomPrompt || `Predict unreacted excess ${currentReaction.reactant2.formula} leftover`,
+          value: outcome.r2Final,
+          color: currentReaction.reactant2.accentColor || currentReaction.reactant2.color,
+          defaultGuess: currentReaction.defaultVolume2,
+        };
+      case 'product1':
+        return {
+          type: 'product1' as const,
+          title: `${currentReaction.product1.formula} Produced`,
+          prompt: currentReaction.targetCustomPrompt || `Predict volume of ${currentReaction.product1.formula} gas produced`,
+          value: outcome.p1Final,
+          color: currentReaction.product1.accentColor || currentReaction.product1.color,
+          defaultGuess: 0,
+        };
+      case 'total':
+      default:
+        return {
+          type: 'total' as const,
+          title: 'Final Total Gas',
+          prompt: currentReaction.targetCustomPrompt || 'Predict final total syringe gas volume',
+          value: outcome.totalFinalGas,
+          color: '#10b981', // emerald
+          defaultGuess: currentReaction.defaultVolume1 + currentReaction.defaultVolume2,
+        };
+    }
+  })();
 
   // Audio mute sync
   const handleToggleSound = () => {
@@ -111,13 +156,23 @@ export default function App() {
     setVol1(0);
     setVol2(0);
     setVolP1(0);
+    setVolP2(0);
     setCurrentSyringeVolume(0);
     setParticles([]);
     setCurrentPopIndex(0);
 
-    // Default prediction starts around the initial sum or reasonable guess
+    // Default slider to current/initial volume (e.g. 60 cm³), NOT the solution
     const initialSum = reaction.defaultVolume1 + reaction.defaultVolume2;
-    setPredictionValue(Math.min(100, Math.max(10, Math.round((initialSum * 0.7) / 5) * 5)));
+    const targetType = reaction.questionTarget || 'total';
+    if (targetType === 'leftover_r1') {
+      setPredictionValue(reaction.defaultVolume1);
+    } else if (targetType === 'leftover_r2') {
+      setPredictionValue(reaction.defaultVolume2);
+    } else if (targetType === 'product1') {
+      setPredictionValue(0);
+    } else {
+      setPredictionValue(initialSum);
+    }
   };
 
   // Step 1: Add Gas 1
@@ -157,6 +212,18 @@ export default function App() {
     );
     setParticles(newParticles);
     setStage('READY_TO_PREDICT');
+
+    // Default position for the slider: current volume of the syringe (e.g. 40 + 20 = 60 cm³)
+    const targetType = currentReaction.questionTarget || 'total';
+    if (targetType === 'leftover_r1') {
+      setPredictionValue(vol1);
+    } else if (targetType === 'leftover_r2') {
+      setPredictionValue(v2);
+    } else if (targetType === 'product1') {
+      setPredictionValue(0);
+    } else {
+      setPredictionValue(totalV); // EXACTLY current volume of the syringe!
+    }
   };
 
   // Step 3: Initiate Reaction ("The Pops")
@@ -175,10 +242,12 @@ export default function App() {
     let curVol1 = vol1;
     let curVol2 = vol2;
     let curVolP1 = 0;
+    let curVolP2 = 0;
     let curSyringeV = currentSyringeVolume;
     let curParticles = [...particles];
 
     const isProdGas = currentReaction.product1.state === 'g';
+    const isProd2Gas = currentReaction.product2 ? currentReaction.product2.state === 'g' : false;
 
     const runNextPop = () => {
       if (stepIdx >= steps.length) {
@@ -196,17 +265,22 @@ export default function App() {
       curVol1 = Math.max(0, Math.round((curVol1 - step.r1Consumed) * 10) / 10);
       curVol2 = Math.max(0, Math.round((curVol2 - step.r2Consumed) * 10) / 10);
       curVolP1 = Math.round((curVolP1 + step.p1Produced) * 10) / 10;
-      curSyringeV = (isProdGas ? curVolP1 : 0) + curVol1 + curVol2;
+      curVolP2 = Math.round((curVolP2 + (step.p2Produced || 0)) * 10) / 10;
+      curSyringeV = (isProdGas ? curVolP1 : 0) + (isProd2Gas ? curVolP2 : 0) + curVol1 + curVol2;
 
       setVol1(curVol1);
       setVol2(curVol2);
       setVolP1(curVolP1);
+      setVolP2(curVolP2);
       setCurrentSyringeVolume(Math.round(curSyringeV * 10) / 10);
 
       // 3. Transform particle graphics
       const r1ToRemove = Math.max(1, Math.round(step.r1Consumed / 10));
       const r2ToRemove = Math.max(1, Math.round(step.r2Consumed / 10));
       const prodToAdd = isProdGas ? Math.max(1, Math.round(step.p1Produced / 10)) : 0;
+      const prod2ToAdd = (currentReaction.product2 && isProd2Gas && step.p2Produced)
+        ? Math.max(1, Math.round(step.p2Produced / 10))
+        : 0;
 
       const popResult = executePopOnParticles(
         curParticles,
@@ -217,7 +291,11 @@ export default function App() {
         currentReaction.product1.particleKind,
         prodToAdd,
         currentReaction.product1.color,
-        isProdGas
+        isProdGas,
+        currentReaction.product2?.particleKind,
+        prod2ToAdd,
+        currentReaction.product2?.color,
+        isProd2Gas
       );
       curParticles = popResult.updatedParticles;
       setParticles([...curParticles]);
@@ -234,7 +312,7 @@ export default function App() {
     setStage('EVALUATED');
     setAttempts((prev) => prev + 1);
 
-    const actual = outcome.totalFinalGas;
+    const actual = targetInfo.value;
     const isAccurate = Math.abs(predictionValue - actual) <= 2;
 
     if (isAccurate) {
@@ -245,8 +323,8 @@ export default function App() {
       // Trigger celebratory confetti
       try {
         confetti({
-          particleCount: 75,
-          spread: 70,
+          particleCount: 85,
+          spread: 75,
           origin: { y: 0.65 },
           colors: ['#0284c7', '#38bdf8', '#10b981', '#f59e0b', '#818cf8'],
         });
@@ -311,7 +389,10 @@ export default function App() {
                 predictionValue={predictionValue}
                 onPredictionChange={setPredictionValue}
                 showPredictionTarget={stage === 'READY_TO_PREDICT' || stage === 'EVALUATED'}
-                actualFinalVolume={outcome.totalFinalGas}
+                actualFinalVolume={targetInfo.value}
+                targetPrompt={targetInfo.prompt}
+                targetColor={targetInfo.color}
+                targetTitle={targetInfo.title}
                 hasLiquidCondensed={currentReaction.product1.state === 'l' && stage === 'EVALUATED'}
               />
             </div>
@@ -326,9 +407,10 @@ export default function App() {
                 vol1={vol1}
                 vol2={vol2}
                 volP1={volP1}
-                volP2={0}
+                volP2={volP2}
                 totalGas={currentSyringeVolume}
                 stage={stage}
+                highlightedTarget={targetInfo.type}
               />
             </div>
           </div>
@@ -341,6 +423,9 @@ export default function App() {
             totalPops={outcome.popSteps.length}
             outcome={outcome}
             predictionValue={predictionValue}
+            targetValue={targetInfo.value}
+            targetDescription={targetInfo.prompt}
+            targetColor={targetInfo.color}
             onAddGas1={handleAddGas1}
             onAddGas2={handleAddGas2}
             onInitiateReaction={handleInitiateReaction}

@@ -189,6 +189,24 @@ export const MoleculeGraphic: React.FC<MoleculeGraphicProps> = ({
       );
       break;
     }
+    case 'CH4': {
+      // Methane: 1 central Carbon (slate) + 4 Hydrogens (white)
+      const rC = s * 0.3;
+      const rH = s * 0.18;
+      content = (
+        <>
+          {/* 3 surrounding/rear Hydrogens */}
+          {renderAtom(mid, mid - rC * 0.95, rH, H_COLOR, '#ffffff', H_SHADOW)}
+          {renderAtom(mid - rC * 0.85, mid + rC * 0.6, rH, H_COLOR, '#ffffff', H_SHADOW)}
+          {renderAtom(mid + rC * 0.85, mid + rC * 0.6, rH, H_COLOR, '#ffffff', H_SHADOW)}
+          {/* Central Carbon */}
+          {renderAtom(mid, mid, rC, C_COLOR, '#cbd5e1', C_SHADOW)}
+          {/* Front Hydrogen */}
+          {renderAtom(mid, mid + rC * 0.35, rH * 1.05, H_COLOR, '#ffffff', H_SHADOW)}
+        </>
+      );
+      break;
+    }
     case 'C2H4': {
       // Ethene: 2 Carbon (slate) + 4 Hydrogen (white)
       const rC = s * 0.26;

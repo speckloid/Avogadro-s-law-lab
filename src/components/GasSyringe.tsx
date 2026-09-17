@@ -12,6 +12,9 @@ interface GasSyringeProps {
   showPredictionTarget: boolean;
   actualFinalVolume?: number;
   hasLiquidCondensed?: boolean;
+  targetPrompt?: string;
+  targetColor?: string;
+  targetTitle?: string;
 }
 
 export const GasSyringe: React.FC<GasSyringeProps> = ({
@@ -23,6 +26,9 @@ export const GasSyringe: React.FC<GasSyringeProps> = ({
   showPredictionTarget,
   actualFinalVolume,
   hasLiquidCondensed = false,
+  targetPrompt = 'Challenge: Drag the arrow to predict the final syringe gas volume!',
+  targetColor = '#f59e0b', // default amber
+  targetTitle = 'Target Volume',
 }) => {
   const scaleRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -440,14 +446,29 @@ export const GasSyringe: React.FC<GasSyringeProps> = ({
       {/* DRAGGABLE PREDICTION ARROW & SCALE TRACK */}
       {showPredictionTarget && (
         <div className="w-full max-w-2xl mt-4 pt-3 border-t border-slate-100 flex flex-col items-center">
-          <div className="w-full flex items-center justify-between mb-1.5 px-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-              <Target className="w-3.5 h-3.5 text-amber-600 animate-spin" style={{ animationDuration: '6s' }} />
-              <span>Challenge: Drag the arrow to predict the final syringe gas volume!</span>
+          <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2 px-1">
+            <div 
+              className="flex items-center gap-2 text-xs font-extrabold px-3.5 py-1.5 rounded-xl border shadow-2xs"
+              style={{
+                backgroundColor: `${targetColor}18`,
+                borderColor: `${targetColor}50`,
+                color: targetColor === '#facc15' ? '#a16207' : targetColor,
+              }}
+            >
+              <Target className="w-4 h-4 shrink-0" style={{ color: targetColor === '#facc15' ? '#a16207' : targetColor }} />
+              <span className="tracking-tight uppercase text-[11px] font-black">{targetPrompt}</span>
             </div>
-            <span className="text-sm font-bold text-amber-600 bg-amber-100/80 px-3 py-0.5 rounded-full font-mono-num border border-amber-300">
-              Target: {predictionValue} cm³
-            </span>
+            <div 
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-xl border font-mono-num"
+              style={{
+                backgroundColor: `${targetColor}18`,
+                borderColor: `${targetColor}50`,
+                color: targetColor === '#facc15' ? '#a16207' : targetColor,
+              }}
+            >
+              <span className="text-[11px] font-medium opacity-80">{targetTitle}:</span>
+              <span className="text-sm font-extrabold">{predictionValue} cm³</span>
+            </div>
           </div>
 
           {/* Interactive Slider Track directly aligned with the 0..100 cm³ barrel width */}
@@ -458,12 +479,15 @@ export const GasSyringe: React.FC<GasSyringeProps> = ({
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
-              className={`relative h-6 bg-slate-100 hover:bg-slate-200/80 rounded-full border border-slate-300 cursor-pointer transition-colors ${
-                stage === 'READY_TO_PREDICT' ? 'ring-2 ring-amber-400/50' : 'opacity-80'
+              className={`relative h-6 bg-slate-100 hover:bg-slate-200/80 rounded-full border cursor-pointer transition-all ${
+                stage === 'READY_TO_PREDICT' ? 'ring-2' : 'opacity-85'
               }`}
               style={{
                 marginLeft: `${(barrelStartX / totalWidth) * 100}%`,
                 width: `${(barrelWidth / totalWidth) * 100}%`,
+                borderColor: stage === 'READY_TO_PREDICT' ? targetColor : '#cbd5e1',
+                // @ts-expect-error Tailwind ring color inline override
+                '--tw-ring-color': `${targetColor}66`,
               }}
             >
               {/* Tick marks on prediction track */}
@@ -487,8 +511,14 @@ export const GasSyringe: React.FC<GasSyringeProps> = ({
               >
                 <div className="flex flex-col items-center cursor-grab active:cursor-grabbing group">
                   {/* Upward pointer arrow */}
-                  <div className="w-0 h-0 border-l-[9px] border-l-transparent border-r-[9px] border-r-transparent border-b-[12px] border-b-amber-500 group-hover:border-b-amber-600 drop-shadow-sm" />
-                  <div className="w-8 h-8 rounded-full bg-amber-500 group-hover:bg-amber-600 border-2 border-white shadow-md flex items-center justify-center text-white text-[10px] font-extrabold font-mono-num">
+                  <div 
+                    className="w-0 h-0 border-l-[9px] border-l-transparent border-r-[9px] border-r-transparent border-b-[12px] drop-shadow-sm transition-colors"
+                    style={{ borderBottomColor: targetColor }}
+                  />
+                  <div 
+                    className="w-8 h-8 rounded-full border-2 border-white shadow-md flex items-center justify-center text-white text-[10px] font-extrabold font-mono-num transition-colors"
+                    style={{ backgroundColor: targetColor }}
+                  >
                     {predictionValue}
                   </div>
                 </div>
@@ -505,7 +535,7 @@ export const GasSyringe: React.FC<GasSyringeProps> = ({
                       <CheckCircle2 className="w-4 h-4" />
                     </div>
                     <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-300 font-mono-num whitespace-nowrap mt-0.5">
-                      {actualFinalVolume} cm³
+                      Actual: {actualFinalVolume} cm³
                     </span>
                   </div>
                 </div>
@@ -513,7 +543,7 @@ export const GasSyringe: React.FC<GasSyringeProps> = ({
             </div>
           </div>
           <p className="text-[11px] text-slate-400 font-medium mt-1">
-            Click or drag along the bar to select your expected final volume (0 to 100 cm³).
+            Click or drag along the track to position your prediction before reacting.
           </p>
         </div>
       )}

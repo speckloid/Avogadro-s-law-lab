@@ -14,6 +14,7 @@ interface VolumeBarChartProps {
   volP2?: number;
   totalGas: number;
   stage: SimStage;
+  highlightedTarget?: 'total' | 'leftover_r1' | 'leftover_r2' | 'product1' | 'product2';
 }
 
 export const VolumeBarChart: React.FC<VolumeBarChartProps> = ({
@@ -26,12 +27,14 @@ export const VolumeBarChart: React.FC<VolumeBarChartProps> = ({
   volP1,
   volP2 = 0,
   totalGas,
+  highlightedTarget,
 }) => {
   const yTicks = [100, 80, 60, 40, 20, 0];
 
   const bars = [
     {
       id: 'r1',
+      targetKey: 'leftover_r1',
       label: reactant1.formula,
       sublabel: `(${reactant1.state})`,
       name: reactant1.name,
@@ -43,6 +46,7 @@ export const VolumeBarChart: React.FC<VolumeBarChartProps> = ({
     },
     {
       id: 'r2',
+      targetKey: 'leftover_r2',
       label: reactant2.formula,
       sublabel: `(${reactant2.state})`,
       name: reactant2.name,
@@ -54,6 +58,7 @@ export const VolumeBarChart: React.FC<VolumeBarChartProps> = ({
     },
     {
       id: 'p1',
+      targetKey: 'product1',
       label: product1.formula,
       sublabel: `(${product1.state})`,
       name: product1.name,
@@ -68,6 +73,7 @@ export const VolumeBarChart: React.FC<VolumeBarChartProps> = ({
       ? [
           {
             id: 'p2',
+            targetKey: 'product2',
             label: product2.formula,
             sublabel: `(${product2.state})`,
             name: product2.name,
@@ -82,6 +88,7 @@ export const VolumeBarChart: React.FC<VolumeBarChartProps> = ({
       : []),
     {
       id: 'total',
+      targetKey: 'total',
       label: 'Total Gas',
       sublabel: '(gases)',
       name: 'Total Volume',
@@ -130,23 +137,38 @@ export const VolumeBarChart: React.FC<VolumeBarChartProps> = ({
         <div className="relative z-10 w-full h-full flex items-end justify-around gap-2 md:gap-3">
           {bars.map((b) => {
             const heightPercent = Math.min(100, Math.max(0, b.volume));
+            const isTargeted = highlightedTarget === b.targetKey;
 
             return (
               <div
                 key={b.id}
                 className="relative flex-1 flex flex-col items-center h-full justify-end group"
               >
-                {/* Floating Volume Value Label */}
+                {/* Floating Volume Value Label & Target Marker */}
                 <div
                   className="absolute transition-all duration-500 ease-out z-20 flex flex-col items-center"
                   style={{ bottom: `calc(${heightPercent}% + 4px)` }}
                 >
+                  {isTargeted && (
+                    <span 
+                      className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full mb-0.5 shadow-2xs whitespace-nowrap animate-bounce"
+                      style={{
+                        backgroundColor: `${b.accentColor}`,
+                        color: '#ffffff',
+                      }}
+                    >
+                      Target
+                    </span>
+                  )}
                   <span
                     className={`px-1.5 py-0.5 rounded text-[11px] font-extrabold font-mono-num shadow-xs transition-transform group-hover:scale-110 ${
-                      b.isTotal
+                      isTargeted
+                        ? 'ring-2 text-white'
+                        : b.isTotal
                         ? 'bg-emerald-600 text-white shadow-emerald-200'
                         : 'bg-white text-slate-700 border border-slate-200'
                     }`}
+                    style={isTargeted ? { backgroundColor: b.accentColor, borderColor: b.accentColor } : undefined}
                   >
                     {b.volume}
                     <span className="text-[9px] font-normal ml-0.5">cm³</span>
@@ -156,12 +178,14 @@ export const VolumeBarChart: React.FC<VolumeBarChartProps> = ({
                 {/* The Animated Bar */}
                 <div
                   className={`w-full max-w-[48px] rounded-t-lg transition-all duration-500 ease-out relative overflow-hidden ${
-                    b.isTotal ? 'ring-2 ring-emerald-400/40' : ''
+                    isTargeted ? 'ring-2 ring-offset-1' : b.isTotal ? 'ring-2 ring-emerald-400/40' : ''
                   }`}
                   style={{
                     height: `${heightPercent}%`,
                     minHeight: b.volume > 0 ? '6px' : '0px',
                     backgroundColor: b.color,
+                    // @ts-expect-error Tailwind ring color override
+                    '--tw-ring-color': isTargeted ? b.accentColor : undefined,
                   }}
                 >
                   {/* Glossy vertical specular highlight sheen */}

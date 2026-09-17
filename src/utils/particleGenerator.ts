@@ -67,7 +67,11 @@ export function executePopOnParticles(
   prodKind: ParticleKind,
   prodCountToAdd: number,
   prodColor: string,
-  isProductGas: boolean
+  isProductGas: boolean,
+  prod2Kind?: ParticleKind,
+  prod2CountToAdd?: number,
+  prod2Color?: string,
+  isProduct2Gas?: boolean
 ): { updatedParticles: ActiveParticle[]; poppedCount: number } {
   let r1Removed = 0;
   let r2Removed = 0;
@@ -87,7 +91,7 @@ export function executePopOnParticles(
     }
   }
 
-  // If the product is gaseous, spawn the product particles near the reaction zones
+  // If product 1 is gaseous, spawn product 1 particles near reaction zones
   if (isProductGas && prodCountToAdd > 0) {
     for (let i = 0; i < prodCountToAdd; i++) {
       const spot = removedSpots[i % Math.max(1, removedSpots.length)] || {
@@ -96,7 +100,7 @@ export function executePopOnParticles(
       };
 
       remaining.push({
-        id: `prod-${prodKind}-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+        id: `prod1-${prodKind}-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
         kind: prodKind,
         color: prodColor,
         speciesRole: 'product1',
@@ -104,6 +108,27 @@ export function executePopOnParticles(
         normY: Math.max(0.12, Math.min(0.85, spot.normY + (Math.random() * 0.1 - 0.05))),
         scale: 1.0,
         isHighlight: true, // briefly highlighted when created
+      });
+    }
+  }
+
+  // If product 2 is gaseous, spawn product 2 particles
+  if (prod2Kind && isProduct2Gas && prod2CountToAdd && prod2CountToAdd > 0) {
+    for (let i = 0; i < prod2CountToAdd; i++) {
+      const spot = removedSpots[(i + (prodCountToAdd || 0)) % Math.max(1, removedSpots.length)] || {
+        normX: 0.15 + Math.random() * 0.7,
+        normY: 0.2 + Math.random() * 0.6,
+      };
+
+      remaining.push({
+        id: `prod2-${prod2Kind}-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+        kind: prod2Kind,
+        color: prod2Color || '#38bdf8',
+        speciesRole: 'product2',
+        normX: Math.max(0.06, Math.min(0.92, spot.normX + (Math.random() * 0.1 - 0.05))),
+        normY: Math.max(0.12, Math.min(0.85, spot.normY + (Math.random() * 0.1 - 0.05))),
+        scale: 1.0,
+        isHighlight: true,
       });
     }
   }

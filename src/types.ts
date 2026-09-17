@@ -6,6 +6,7 @@ export type ParticleKind =
   | 'H2' 
   | 'O2' 
   | 'H2O' 
+  | 'CH4'
   | 'Cl2' 
   | 'HCl' 
   | 'N2' 
@@ -18,6 +19,13 @@ export type ParticleKind =
   | 'CO2' 
   | 'SO2' 
   | 'SO3';
+
+export type QuestionTargetType = 
+  | 'total' 
+  | 'leftover_r1' 
+  | 'leftover_r2' 
+  | 'product1' 
+  | 'product2';
 
 export interface ChemicalSpecies {
   name: string;
@@ -39,7 +47,8 @@ export interface ReactionDefinition {
   product2?: ChemicalSpecies;
   defaultVolume1: number; // in cm³
   defaultVolume2: number; // in cm³
-  questionTarget?: 'total' | 'reactant1' | 'reactant2' | 'product1';
+  questionTarget?: QuestionTargetType;
+  targetCustomPrompt?: string;
   hint: string;
 }
 

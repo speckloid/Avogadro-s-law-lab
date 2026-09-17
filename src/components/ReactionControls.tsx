@@ -6,10 +6,9 @@ import {
   FlaskConical, 
   Sparkles, 
   RotateCcw, 
-  CheckCircle2, 
   HelpCircle,
   Trophy,
-  Volume2
+  Target
 } from 'lucide-react';
 
 interface ReactionControlsProps {
@@ -19,6 +18,9 @@ interface ReactionControlsProps {
   totalPops: number;
   outcome: ReactionOutcome;
   predictionValue: number;
+  targetValue: number;
+  targetDescription: string;
+  targetColor: string;
   onAddGas1: () => void;
   onAddGas2: () => void;
   onInitiateReaction: () => void;
@@ -34,6 +36,9 @@ export const ReactionControls: React.FC<ReactionControlsProps> = ({
   totalPops,
   outcome,
   predictionValue,
+  targetValue,
+  targetDescription,
+  targetColor,
   onAddGas1,
   onAddGas2,
   onInitiateReaction,
@@ -46,9 +51,9 @@ export const ReactionControls: React.FC<ReactionControlsProps> = ({
   const p1 = reaction.product1;
   const p2 = reaction.product2;
 
-  // Evaluate accuracy if evaluated
-  const isAccurate = Math.abs(predictionValue - outcome.totalFinalGas) <= 2;
-  const delta = Math.abs(predictionValue - outcome.totalFinalGas);
+  // Evaluate accuracy against target value
+  const isAccurate = Math.abs(predictionValue - targetValue) <= 2;
+  const delta = Math.abs(predictionValue - targetValue);
 
   return (
     <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 md:p-6 select-none flex flex-col gap-4">
@@ -95,12 +100,12 @@ export const ReactionControls: React.FC<ReactionControlsProps> = ({
             <MoleculeGraphic kind={p1.particleKind} size={20} />
           </div>
 
-          {/* Optional Product 2 */}
+          {/* Optional Product 2 (e.g. in Methane Reforming) */}
           {p2 && (
             <>
               <span className="text-slate-400 font-black">+</span>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="font-extrabold">{p2.coefficient > 1 ? p2.coefficient : ''}</span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 shadow-2xs">
+                <span className="text-sky-700 font-extrabold">{p2.coefficient > 1 ? p2.coefficient : ''}</span>
                 <span>{p2.formula}</span>
                 <span className="text-xs font-semibold text-slate-400">({p2.state})</span>
                 <MoleculeGraphic kind={p2.particleKind} size={20} />
@@ -148,12 +153,25 @@ export const ReactionControls: React.FC<ReactionControlsProps> = ({
           )}
 
           {stage === 'READY_TO_PREDICT' && (
-            <div className="flex items-center gap-2 text-amber-900 font-medium">
-              <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-800 text-xs font-extrabold flex items-center justify-center">
+            <div className="flex items-center gap-2.5 text-slate-900 font-medium">
+              <span 
+                className="w-6 h-6 rounded-full text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs"
+                style={{ backgroundColor: targetColor }}
+              >
                 3
               </span>
-              <p className="text-sm">
-                Use <strong>Avogadro’s Law</strong> to predict the final total gas volume, then click <strong>React!</strong>
+              <p className="text-sm leading-snug">
+                <span 
+                  className="font-black px-2 py-0.5 rounded text-[11px] mr-1.5 uppercase tracking-wide inline-block border"
+                  style={{ 
+                    backgroundColor: `${targetColor}18`, 
+                    borderColor: `${targetColor}50`,
+                    color: targetColor === '#facc15' ? '#a16207' : targetColor 
+                  }}
+                >
+                  Challenge
+                </span>
+                {targetDescription}. Drag the matching slider above, then click <strong>React!</strong>
               </p>
             </div>
           )}
@@ -169,7 +187,7 @@ export const ReactionControls: React.FC<ReactionControlsProps> = ({
 
           {stage === 'EVALUATED' && (
             <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {isAccurate ? (
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                     <Trophy className="w-3.5 h-3.5 text-emerald-600" />
@@ -181,8 +199,13 @@ export const ReactionControls: React.FC<ReactionControlsProps> = ({
                   </span>
                 )}
                 <span className="text-xs text-slate-500">
-                  Predicted: <strong className="font-mono-num">{predictionValue} cm³</strong> • Actual:{' '}
-                  <strong className="text-emerald-700 font-mono-num">{outcome.totalFinalGas} cm³</strong>
+                  Predicted: <strong className="font-mono-num">{predictionValue} cm³</strong> • Actual Target:{' '}
+                  <strong className="text-emerald-700 font-mono-num">{targetValue} cm³</strong>
+                  {reaction.questionTarget && reaction.questionTarget !== 'total' && (
+                    <span className="ml-1 text-slate-400">
+                      (Total Gas in Syringe: {outcome.totalFinalGas} cm³)
+                    </span>
+                  )}
                 </span>
               </div>
               <p className="text-xs text-slate-600 font-normal mt-0.5 leading-relaxed">
@@ -223,7 +246,10 @@ export const ReactionControls: React.FC<ReactionControlsProps> = ({
           {stage === 'READY_TO_PREDICT' && (
             <button
               onClick={onInitiateReaction}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-95 shadow-md shadow-orange-500/20 transition-all cursor-pointer text-sm"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-white shadow-md active:scale-95 transition-all cursor-pointer text-sm"
+              style={{
+                backgroundColor: targetColor === '#facc15' ? '#ca8a04' : targetColor,
+              }}
             >
               <Sparkles className="w-4 h-4" />
               <span>Lock Prediction & React!</span>
